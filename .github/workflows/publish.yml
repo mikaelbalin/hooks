@@ -13,9 +13,11 @@ jobs:
   publish:
     needs: build-test
     runs-on: ubuntu-latest
+    # Set to false to temporarily disable this job
+    if: false
     permissions:
       contents: read
-      packages: write
+      packages: read
 
     steps:
       - uses: actions/checkout@v4
@@ -26,22 +28,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@kaelui"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.15.5
+      # We don't need to install dependencies since we're only publishing
+      # the pre-built artifacts created in the build-test job
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # We already ran build and tests in the build-test job
-
-      - name: Publish to GitHub Packages
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          npm publish --access=public
+      - name: Publish to npm
+        run: npm publish --access=public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
