@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-    tags-ignore: ["v*"] # Skip CI for version tags
   pull_request:
     branches: [main]
 
@@ -11,6 +10,8 @@ on:
 jobs:
   check_skip:
     runs-on: ubuntu-latest
+    # Skip if this is a tag push
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -29,7 +30,7 @@ jobs:
 
   build:
     needs: check_skip
-    if: ${{ needs.check_skip.outputs.should_skip != 'true' }}
+    if: ${{ needs.check_skip.outputs.should_skip != 'true' && !startsWith(github.ref, 'refs/tags/') }}
     uses: ./.github/workflows/build-test.yml
     with:
       lint: true
