@@ -1,0 +1,52 @@
+name: Build and Test
+
+on:
+  workflow_call:
+    inputs:
+      lint:
+        description: "Whether to run linting"
+        required: false
+        default: false
+        type: boolean
+      ref:
+        description: "Git reference to checkout"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.5
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Lint
+        if: inputs.lint == true
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test:run
+        env:
+          CI: true
+          NODE_ENV: test

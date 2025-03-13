@@ -5,7 +5,13 @@ on:
     types: [release-created]
 
 jobs:
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+    with:
+      ref: ${{ github.event.client_payload.ref || 'refs/tags/v' || github.event.client_payload.version }}
+
   publish:
+    needs: build-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,17 +37,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test
-        run: pnpm test:run
-        env:
-          CI: true
-          NODE_ENV: test
+      # We already ran build and tests in the build-test job
 
       - name: Publish to GitHub Packages
         run: |

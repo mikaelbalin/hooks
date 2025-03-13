@@ -6,38 +6,29 @@ on:
   pull_request:
     branches: [main]
 
+# Skip this workflow if the commit message contains [skip ci] or is from the GitHub Actions bot
 jobs:
-  build:
+  check_skip:
     runs-on: ubuntu-latest
-
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          fetch-depth: 1
+      - id: skip_check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMITTER=$(git log -1 --pretty=%cn)
+          if [[ "$COMMIT_MSG" == *"[skip ci]"* || "$COMMITTER" == "github-actions"* ]]; then
+            echo "should_skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_skip=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.15.5
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test
-        run: pnpm test:run
-        env:
-          # Add necessary environment variables for browser testing
-          CI: true
-          NODE_ENV: test
+  build:
+    needs: check_skip
+    if: ${{ needs.check_skip.outputs.should_skip != 'true' }}
+    uses: ./.github/workflows/build-test.yml
+    with:
+      lint: true
