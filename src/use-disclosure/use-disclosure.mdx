@@ -1,0 +1,57 @@
+import { Canvas, Meta } from "@storybook/blocks";
+
+import * as useDisclosure from "./use-disclosure.stories";
+
+<Meta of={useDisclosure} />
+
+# `useDisclosure`
+
+A React hook that manages disclosure state (opened/closed) with convenient control functions. This hook is ideal for modals, drawers, dropdowns, and any component that needs to toggle between visible and hidden states.
+
+## Features
+
+- Simple state management with boolean values
+- Controlled open and close functions
+- Toggle function to switch between states
+- Optional callbacks for open and close events
+
+## Parameters
+
+- `initialState` (optional): Boolean that sets the initial state (default: `false`)
+- `callbacks` (optional): Object containing `onOpen` and `onClose` callback functions
+
+## Returns
+
+An array containing:
+
+1. `opened`: Boolean state indicating if the disclosure is open
+2. Object with control functions:
+   - `open`: Function to set state to open
+   - `close`: Function to set state to closed
+   - `toggle`: Function to toggle between states
+
+## Example Usage
+
+```jsx
+function Modal() {
+  const [isOpen, { open, close, toggle }] = useDisclosure(false);
+
+  return (
+    <>
+      <button onClick={open}>Open Modal</button>
+
+      {isOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Modal Title</h2>
+            <p>Modal content goes here...</p>
+            <button onClick={close}>Close</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+<Canvas of={useDisclosure.Primary} />

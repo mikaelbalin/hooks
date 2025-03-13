@@ -1,0 +1,9 @@
+# Test coverage reports
+coverage
+
+# Dependencies directory
+node_modules
+
+dist
+
+.DS_Store

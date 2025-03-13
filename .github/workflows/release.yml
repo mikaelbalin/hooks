@@ -1,0 +1,103 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write # Permission to trigger other workflows
+
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }} # Output the version for other workflows
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main # Checkout the main branch instead of the tag
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build Changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["feature", "enhancement"]
+                },
+                {
+                  "title": "## 🐛 Fixes",
+                  "labels": ["fix", "bug"]
+                },
+                {
+                  "title": "## 📝 Documentation",
+                  "labels": ["documentation"]
+                },
+                {
+                  "title": "## 🔧 Maintenance",
+                  "labels": ["chore", "dependencies"]
+                }
+              ],
+              "template": "{{#categories}}\n{{title}}\n{{#entries}}\n* {{message}} {{#if commit}}([{{commit.short}}]({{commit.url}})){{/if}} by {{author}} {{#if pr}}([#{{pr}}]({{pr.url}})){{/if}}\n{{/entries}}\n{{/categories}}\n",
+              "pr_template": "* {{name}} {{#if pr}}([#{{pr}}]({{pr.url}})){{/if}}",
+              "empty_template": "No changes"
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create CHANGELOG.md if it doesn't exist
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+
+      - name: Extract release date from git tag
+        id: release_date
+        run: |
+          echo "date=$(git log -1 --date=short --format=%ad '${{ github.ref_name }}')" >> $GITHUB_OUTPUT;
+
+      - name: Update CHANGELOG.md
+        uses: stefanzweifel/changelog-updater-action@v1
+        with:
+          release-date: ${{ steps.release_date.outputs.date }}
+          latest-version: ${{ steps.get_version.outputs.VERSION }}
+          release-notes: ${{ steps.changelog.outputs.changelog }}
+
+      - name: Commit updated CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "docs: update changelog for version v${{ steps.get_version.outputs.VERSION }} [skip ci]"
+          file_pattern: CHANGELOG.md
+          branch: main
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Changes
+
+            ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger publish workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          event-type: release-created
+          client-payload: '{"version": "${{ steps.get_version.outputs.VERSION }}", "ref": "${{ github.ref }}"}'
